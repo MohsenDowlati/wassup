@@ -3,14 +3,14 @@ package domain
 import "time"
 
 type OfflineMessage struct {
-	ID             string         `bson:"_id,omitempty" json:"id"`
-	IdempotencyID  string         `bson:"idempotency_id" json:"idempotency_id"`
-	ConversationID string         `bson:"conversation_id" json:"conversation_id"`
-	SequenceID     uint64         `bson:"sequence_id" json:"sequence_id"`
-	SenderID       string         `bson:"sender_id" json:"sender_id"`
-	RecipientID    string         `bson:"recipient_id" json:"recipient_id"`
-	Payload        []byte         `bson:"payload" json:"payload"`
-	Status         DeliveryStatus `bson:"status" json:"status"`
+	ID             string            `bson:"_id,omitempty" json:"id"`
+	IdempotencyID  string            `bson:"idempotency_id" json:"idempotency_id"`
+	ConversationID string            `bson:"conversation_id,omitempty" json:"conversation_id,omitempty"`
+	SequenceID     uint64            `bson:"sequence_id,omitempty" json:"sequence_id,omitempty"`
+	SenderID       string            `bson:"sender_id" json:"sender_id"`
+	RecipientID    string            `bson:"recipient_id" json:"recipient_id"`
+	Payload        CiphertextPayload `bson:"payload" json:"payload"`
+	Status         DeliveryStatus    `bson:"status" json:"status"`
 
 	CreatedAt    time.Time  `bson:"created_at" json:"created_at"`
 	ExpiresAt    time.Time  `bson:"expires_at" json:"expires_at"`
@@ -28,9 +28,14 @@ func NewOfflineMessage(env *Envelope, ttl time.Duration) *OfflineMessage {
 		SequenceID:     env.SequenceID,
 		SenderID:       env.SenderID,
 		RecipientID:    env.RecipientID,
-		Payload:        append([]byte(nil), env.Payload...),
-		Status:         StatusPending,
-		CreatedAt:      now,
-		ExpiresAt:      now.Add(ttl),
+		Payload: CiphertextPayload{
+			Ciphertext:  append([]byte(nil), env.Payload.Ciphertext...),
+			CipherSuite: env.Payload.CipherSuite,
+			KeyID:       env.Payload.KeyID,
+			Nonce:       append([]byte(nil), env.Payload.Nonce...),
+		},
+		Status:    StatusPending,
+		CreatedAt: now,
+		ExpiresAt: now.Add(ttl),
 	}
 }
