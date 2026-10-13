@@ -19,6 +19,7 @@ type LocalConnectionHub interface {
 	ActiveConnections() int
 
 	BroadcastShutdown(ctx context.Context)
+	IsConnected(userID string) bool
 }
 
 type LocalClient interface {

@@ -17,6 +17,11 @@ type OfflineRepository struct {
 	collection *mongo.Collection
 }
 
+func (r *OfflineRepository) Save(ctx context.Context, msg *domain.OfflineMessage) error {
+	_, err := r.collection.InsertOne(ctx, msg)
+	return err
+}
+
 func (r *OfflineRepository) ClaimPending(
 	ctx context.Context,
 	recipientID string,

@@ -21,7 +21,7 @@ type OfflineMessageRepository interface {
 		recipientID string,
 		idempotencyID string,
 	) error
-	
+
 	ReleaseLease(
 		ctx context.Context,
 		recipientID string,
@@ -29,4 +29,5 @@ type OfflineMessageRepository interface {
 	) error
 
 	EnsureIndexes(ctx context.Context) error
+	Save(ctx context.Context, msg *domain.OfflineMessage) error
 }

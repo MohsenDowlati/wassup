@@ -13,6 +13,7 @@ type DistributedPubSub interface {
 	SubscribeGatewayInbox(ctx context.Context, gatewayID string, handler MessageHandler) error
 
 	Close() error
+	PublishToNode(ctx context.Context, nodeID string, env *domain.Envelope) error
 }
 
 type SessionRegistry interface {
@@ -23,4 +24,5 @@ type SessionRegistry interface {
 	LocateUser(ctx context.Context, userID string) (string, error)
 
 	RefreshSession(ctx context.Context, userID, gatewayID string) error
+	FindNode(ctx context.Context, userID string) (string, bool, error)
 }

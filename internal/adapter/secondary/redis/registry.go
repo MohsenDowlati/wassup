@@ -92,3 +92,14 @@ func (r *SessionRegistry) RefreshSession(ctx context.Context, userID, gatewayID 
 	}
 	return nil
 }
+
+func (r *SessionRegistry) FindNode(ctx context.Context, userID string) (string, bool, error) {
+	nodeID, err := r.client.Get(ctx, "user:node:"+userID).Result()
+	if errors.Is(err, redis.Nil) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return nodeID, true, nil
+}

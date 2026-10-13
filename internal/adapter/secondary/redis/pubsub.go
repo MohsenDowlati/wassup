@@ -115,3 +115,12 @@ func (p *PubSubManager) Close() error {
 	p.closed = true
 	return p.pubsub.Close()
 }
+
+func (p *PubSubManager) PublishToNode(ctx context.Context, nodeID string, env *domain.Envelope) error {
+	payload, err := json.Marshal(env)
+	if err != nil {
+		return fmt.Errorf("failed to marshal envelope: %w", err)
+	}
+	channel := "node:" + nodeID
+	return p.client.Publish(ctx, channel, payload).Err()
+}

@@ -98,3 +98,10 @@ func (h *Hub) BroadcastShutdown(ctx context.Context) {
 	}
 	h.connections = make(map[string]map[string]ports.LocalClient)
 }
+
+func (h *Hub) IsConnected(userID string) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	sessions, exists := h.connections[userID]
+	return exists && len(sessions) > 0
+}
