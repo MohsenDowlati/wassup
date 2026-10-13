@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/MohsenDowlati/wassup/internal/core/domain"
-	ports "github.com/MohsenDowlati/wassup/internal/core/port"
+	ports "github.com/MohsenDowlati/wassup/internal/core/ports"
 )
 
 const (

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	ports "github.com/MohsenDowlati/wassup/internal/core/port"
+	ports "github.com/MohsenDowlati/wassup/internal/core/ports"
 	"github.com/redis/go-redis/v9"
 	"time"
 )
