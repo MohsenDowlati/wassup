@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	ports "github.com/MohsenDowlati/wassup/internal/core/ports"
+	"github.com/MohsenDowlati/wassup/internal/core/ports"
 	"github.com/redis/go-redis/v9"
 	"time"
 )
@@ -73,7 +73,6 @@ func (r *SessionRegistry) LocateUser(ctx context.Context, userID string) (string
 	return gatewayID, nil
 }
 
-// RefreshSession extends the session lease TTL. Called during WebSocket heartbeat pings.
 func (r *SessionRegistry) RefreshSession(ctx context.Context, userID, gatewayID string) error {
 	script := `
 		local current = redis.call('GET', KEYS[1])
