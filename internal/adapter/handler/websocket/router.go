@@ -48,7 +48,7 @@ func (gh *GatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionID := generateSessionID()
+	sessionID := GenerateSessionID()
 	session := NewClientSession(
 		r.Context(),
 		userID,
@@ -67,7 +67,7 @@ func (gh *GatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	session.Start()
 }
 
-func generateSessionID() string {
+func GenerateSessionID() string {
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
