@@ -38,19 +38,19 @@ else
 end
 `
 
-type RedisRateLimiter struct {
+type RateLimiter struct {
 	client *goredis.Client
 	script *goredis.Script
 }
 
-func NewRedisRateLimiter(client *goredis.Client) *RedisRateLimiter {
-	return &RedisRateLimiter{
+func NewRedisRateLimiter(client *goredis.Client) *RateLimiter {
+	return &RateLimiter{
 		client: client,
 		script: goredis.NewScript(slidingWindowLua),
 	}
 }
 
-func (r *RedisRateLimiter) Allow(
+func (r *RateLimiter) Allow(
 	ctx context.Context,
 	key string,
 	limit int64,
@@ -82,4 +82,4 @@ func (r *RedisRateLimiter) Allow(
 	return allowed, remaining, time.Duration(retryAfterMs) * time.Millisecond, nil
 }
 
-var _ ports.DistributedRateLimiter = (*RedisRateLimiter)(nil)
+var _ ports.DistributedRateLimiter = (*RateLimiter)(nil)

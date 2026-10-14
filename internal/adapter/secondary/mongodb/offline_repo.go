@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MohsenDowlati/wassup/internal/core/domain"
-	ports "github.com/MohsenDowlati/wassup/internal/core/ports"
+	"github.com/MohsenDowlati/wassup/internal/core/ports"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"

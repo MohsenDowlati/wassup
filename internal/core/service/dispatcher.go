@@ -1,9 +1,9 @@
-package services
+package service
 
 import (
 	"context"
 	"github.com/MohsenDowlati/wassup/internal/core/domain"
-	ports "github.com/MohsenDowlati/wassup/internal/core/ports"
+	"github.com/MohsenDowlati/wassup/internal/core/ports"
 	"log/slog"
 )
 
