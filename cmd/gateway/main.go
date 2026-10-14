@@ -54,7 +54,6 @@ func main() {
 		_ = mongoClient.Disconnect(disconnectCtx)
 	}()
 
-	// Wires
 	sessionRegistry := redis.NewSessionRegistry(redisClient)
 	pubsubManager := redis.NewPubSubManager(redisClient, logger)
 	defer pubsubManager.Close()
@@ -84,7 +83,7 @@ func main() {
 		}
 	}()
 
-	pasetoVerifier, err := loadPasetoVerifierFromEnv()
+	pasetoVerifier, err := security.NewPasetoVerifierFromEnv()
 	if err != nil {
 		logger.Error("failed to initialize paseto verifier", slog.String("error", err.Error()))
 		os.Exit(1)
