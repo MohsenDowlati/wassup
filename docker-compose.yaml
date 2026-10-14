@@ -1,0 +1,95 @@
+version: "3.8"
+
+services:
+  loadbalancer:
+    image: nginx:1.25-alpine
+    container_name: wassup-lb
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deployments/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web:/usr/share/nginx/html:ro
+    depends_on:
+      - gateway-01
+      - gateway-02
+    networks:
+      - wassup-net
+
+  gateway-01:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile
+    container_name: wassup-gw-01
+    environment:
+      - APP_ENV=production
+      - SERVER_PORT=8080
+      - NODE_ID=node-gw-01
+      - ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+      - PASETO_PUBLIC_KEY_HEX=b40fc92ac65f1471b67f3ae991e0a9f01441249b3d012142accc4328b543c78b
+      - PASETO_ISSUER=wassup-auth-service
+      - PASETO_AUDIENCE=wassup-gateway
+      - REDIS_ADDR=redis:6379
+      - MONGO_URI=mongodb://mongo:27017/wassup_chat
+      - MONGO_DATABASE=wassup_chat
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    networks:
+      - wassup-net
+
+  gateway-02:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile
+    container_name: wassup-gw-02
+    environment:
+      - APP_ENV=production
+      - SERVER_PORT=8080
+      - NODE_ID=node-gw-02
+      - ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+      - PASETO_PUBLIC_KEY_HEX=b40fc92ac65f1471b67f3ae991e0a9f01441249b3d012142accc4328b543c78b
+      - PASETO_ISSUER=wassup-auth-service
+      - PASETO_AUDIENCE=wassup-gateway
+      - REDIS_ADDR=redis:6379
+      - MONGO_URI=mongodb://mongo:27017/wassup_chat
+      - MONGO_DATABASE=wassup_chat
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    networks:
+      - wassup-net
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: wassup-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - wassup-net
+
+  mongo:
+    image: mongo:7.0
+    container_name: wassup-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - wassup-net
+
+volumes:
+  mongo-data:
+
+networks:
+  wassup-net:
+    driver: bridge
