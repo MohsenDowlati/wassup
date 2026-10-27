@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wassup</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --border: #30363d;
+            --accent: #238636;
+            --accent-hover: #2ea043;
+            --text: #c9d1d9;
+            --text-muted: #8b949e;
+            --danger: #f85149;
+            --warning: #d29922;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 12px 24px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+        .badge-offline { background: #3c1e1e; color: var(--danger); border: 1px solid var(--danger); }
+        .badge-connecting { background: #3b2e1e; color: var(--warning); border: 1px solid var(--warning); }
+        .badge-online { background: #1b382b; color: #56d364; border: 1px solid #56d364; }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 340px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            background: var(--card-bg);
+            border-right: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg);
+        }
+
+        .diagnostics-panel {
+            background: var(--card-bg);
+            border-left: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+
+        label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+        input, textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        input:focus, textarea:focus { border-color: #58a6ff; }
+
+        button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        button:hover { background: var(--accent-hover); }
+        button:disabled { background: #21262d; color: var(--text-muted); cursor: not-allowed; }
+        button.btn-danger { background: #da3633; }
+        button.btn-danger:hover { background: #b62324; }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .msg-card {
+            max-width: 70%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+            position: relative;
+        }
+        .msg-outbound {
+            align-self: flex-end;
+            background: #1f3b2e;
+            border: 1px solid #2ea043;
+        }
+        .msg-inbound {
+            align-self: flex-start;
+            background: #21262d;
+            border: 1px solid var(--border);
+        }
+        .msg-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            font-family: var(--font-mono);
+        }
+
+        .input-bar {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            background: var(--card-bg);
+            display: flex;
+            gap: 12px;
+        }
+
+        .logs-box {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 6px;
+            overflow-y: auto;
+            color: #79c0ff;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div style="display:flex; align-items:center; gap:12px;">
+        <strong style="font-size:16px;">Wassup Distributed Gateway</strong>
+        <span id="connBadge" class="badge badge-offline">DISCONNECTED</span>
+    </div>
+    <div style="font-size:12px; color:var(--text-muted);">
+        Active Gateway Node: <span id="nodeDisplay" style="color:#58a6ff; font-family:var(--font-mono);">none</span>
+    </div>
+</header>
+
+<div class="main-container">
+    <!-- Config Sidebar -->
+    <div class="sidebar">
+        <div>
+            <label>Gateway WS URL</label>
+            <input type="text" id="wsUrlInput" value="ws://localhost:8080/ws" />
+        </div>
+        <div>
+            <label>Sender User ID</label>
+            <input type="text" id="userIdInput" value="user_alice" />
+        </div>
+        <div>
+            <label>PASETO v4 Bearer Token</label>
+            <textarea id="tokenInput" rows="4" placeholder="v4.public...."></textarea>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button id="connectBtn" style="flex:1;">Connect</button>
+            <button id="disconnectBtn" class="btn-danger" style="flex:1;" disabled>Close</button>
+        </div>
+        <hr style="border: 0; border-top: 1px solid var(--border);" />
+        <div>
+            <label>Target Recipient ID</label>
+            <input type="text" id="targetIdInput" value="user_bob" />
+        </div>
+        <div>
+            <label>Conversation ID</label>
+            <input type="text" id="convIdInput" value="conv_alice_bob" />
+        </div>
+    </div>
+
+    <!-- Active Chat -->
+    <div class="chat-area">
+        <div class="messages" id="messagesList"></div>
+        <div class="input-bar">
+            <input type="text" id="msgTextInput" placeholder="Type message... (encrypted envelope payload)" disabled />
+            <button id="sendBtn" disabled>Send</button>
+        </div>
+    </div>
+
+    <!-- Live Telemetry / Diagnostics -->
+    <div class="diagnostics-panel">
+        <strong>Realtime Telemetry</strong>
+        <div>Local Monotonic Seq: <span id="seqCounter" style="color:#56d364;">0</span></div>
+        <div>Pending ACKs: <span id="pendingAcksCount" style="color:var(--warning);">0</span></div>
+        <label>Protocol Audit Log:</label>
+        <div class="logs-box" id="auditLogs"></div>
+    </div>
+</div>
+
+<script>
+    // --- Architecture State ---
+    let ws = null;
+    let localSeq = 0;
+    const pendingAcks = new Map(); // message_id -> { timeout, envelope }
+    let reconnectAttempts = 0;
+    let explicitClose = false;
+
+    // DOM Elements
+    const connBadge = document.getElementById("connBadge");
+    const nodeDisplay = document.getElementById("nodeDisplay");
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const sendBtn = document.getElementById("sendBtn");
+    const msgTextInput = document.getElementById("msgTextInput");
+    const messagesList = document.getElementById("messagesList");
+    const auditLogs = document.getElementById("auditLogs");
+    const seqCounter = document.getElementById("seqCounter");
+    const pendingAcksCount = document.getElementById("pendingAcksCount");
+
+    function logAudit(eventType, data) {
+        const ts = new Date().toISOString().split("T")[1].slice(0, 8);
+        auditLogs.textContent += `[${ts}] [${eventType}] ${JSON.stringify(data)}\n`;
+        auditLogs.scrollTop = auditLogs.scrollHeight;
+    }
+
+    function generateTraceparent() {
+        const version = "00";
+        const traceId = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+            .map(b => b.toString(16).padStart(2, "0")).join("");
+        const parentId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+            .map(b => b.toString(16).padStart(2, "0")).join("");
+        return `${version}-${traceId}-${parentId}-01`;
+    }
+
+    function generateUUID() {
+        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+    }
+
+    function updateBadge(state) {
+        connBadge.className = `badge badge-${state}`;
+        connBadge.textContent = state.toUpperCase();
+        const isOnline = state === "online";
+        sendBtn.disabled = !isOnline;
+        msgTextInput.disabled = !isOnline;
+        connectBtn.disabled = isOnline;
+        disconnectBtn.disabled = !isOnline;
+    }
+
+    function connect() {
+        explicitClose = false;
+        const baseUrl = document.getElementById("wsUrlInput").value.trim();
+        const token = document.getElementById("tokenInput").value.trim();
+
+        if (!token) {
+            alert("Please provide a valid PASETO v4 token.");
+            return;
+        }
+
+        updateBadge("connecting");
+        const url = `${baseUrl}?token=${encodeURIComponent(token)}`;
+        logAudit("WS_CONNECTING", { endpoint: baseUrl });
+
+        ws = new WebSocket(url);
+        ws.binaryType = "blob";
+
+        ws.onopen = () => {
+            updateBadge("online");
+            reconnectAttempts = 0;
+            logAudit("WS_OPEN", { status: "handshake_success" });
+        };
+
+        ws.onmessage = async (event) => {
+            let rawData = event.data;
+            if (rawData instanceof Blob) {
+                rawData = await rawData.text();
+            }
+
+            try {
+                const env = JSON.parse(rawData);
+                handleIncomingEnvelope(env);
+            } catch (err) {
+                logAudit("PARSE_ERR", { raw: rawData, error: err.message });
+            }
+        };
+
+        ws.onerror = (err) => {
+            logAudit("WS_ERROR", { msg: "WebSocket error encountered" });
+        };
+
+        ws.onclose = (event) => {
+            updateBadge("offline");
+            nodeDisplay.textContent = "none";
+            logAudit("WS_CLOSE", { code: event.code, reason: event.reason });
+
+            if (!explicitClose && reconnectAttempts < 5) {
+                // Exponential backoff with jitter
+                reconnectAttempts++;
+                const timeout = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000) + Math.random() * 500;
+                logAudit("RECONNECT_SCHEDULED", { attempt: reconnectAttempts, delayMs: Math.round(timeout) });
+                setTimeout(connect, timeout);
+            }
+        };
+    }
+
+    function handleIncomingEnvelope(env) {
+        logAudit("RECV_ENVELOPE", { id: env.idempotency_id, type: env.type, seq: env.seq_id });
+
+        // Handle delivery ACK from remote peer or server
+        if (env.type === "CLIENT_ACK" || env.type === "SERVER_ACK") {
+            let ackForId = "";
+            try {
+                ackForId = decodeURIComponent(escape(atob(env.payload?.ciphertext || "")));
+            } catch {}
+            if (pendingAcks.has(ackForId)) {
+                clearTimeout(pendingAcks.get(ackForId).timeout);
+                pendingAcks.delete(ackForId);
+                pendingAcksCount.textContent = pendingAcks.size;
+
+                const msgEl = document.getElementById(`msg-${ackForId}`);
+                if (msgEl) {
+                    const statusBadge = msgEl.querySelector(".ack-status");
+                    if (statusBadge) statusBadge.textContent = "✓✓ Delivered (P99 ACK)";
+                }
+            }
+            return;
+        }
+
+        // Handle standard message
+        renderMessage(env, "inbound");
+
+        // Auto-send delivery ACK back to original sender
+        sendAck(env.idempotency_id, env.sender_id, env.conversation_id);
+    }
+
+    function sendAck(targetMessageId, recipientId, convId) {
+        const ackEnv = {
+            idempotency_id: generateUUID(),
+            conversation_id: convId,
+            sender_id: document.getElementById("userIdInput").value.trim(),
+            recipient_id: recipientId,
+            type: "CLIENT_ACK",
+            seq_id: ++localSeq,
+            timestamp: Date.now(),
+            trace_id: generateTraceparent(),
+            payload: { ciphertext: btoa(targetMessageId) }
+        };
+        ws.send(JSON.stringify(ackEnv));
+        seqCounter.textContent = localSeq;
+        logAudit("SENT_ACK", { for: targetMessageId });
+    }
+
+    function sendMessage() {
+        const text = msgTextInput.value.trim();
+        if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+        const messageId = generateUUID();
+        const myId = document.getElementById("userIdInput").value.trim();
+        const recipientId = document.getElementById("targetIdInput").value.trim();
+        const convId = document.getElementById("convIdInput").value.trim();
+
+        // Encode payload to Base64 (simulating E2EE ciphertext payload)
+        const base64Payload = btoa(unescape(encodeURIComponent(text)));
+
+        localSeq++;
+        seqCounter.textContent = localSeq;
+
+        const envelope = {
+            idempotency_id: messageId,
+            conversation_id: convId,
+            sender_id: myId,
+            recipient_id: recipientId,
+            type: "MESSAGE",
+            seq_id: localSeq,
+            timestamp: Date.now(),
+            payload: { ciphertext: base64Payload },
+            trace_id: generateTraceparent()
+        };
+
+        // Set timeout for Delivery ACK tracking (At-Least-Once Delivery SLA)
+        const ackTimeout = setTimeout(() => {
+            logAudit("ACK_TIMEOUT", { message_id: messageId });
+            const msgEl = document.getElementById(`msg-${messageId}`);
+            if (msgEl) {
+                const statusBadge = msgEl.querySelector(".ack-status");
+                if (statusBadge) {
+                    statusBadge.style.color = "var(--danger)";
+                    statusBadge.textContent = "✗ ACK Timeout";
+                }
+            }
+        }, 5000);
+
+        pendingAcks.set(messageId, { timeout: ackTimeout, envelope });
+        pendingAcksCount.textContent = pendingAcks.size;
+
+        ws.send(JSON.stringify(envelope));
+        renderMessage(envelope, "outbound", text);
+        msgTextInput.value = "";
+        logAudit("SENT_MSG", { id: messageId, seq: localSeq });
+    }
+
+    function renderMessage(env, direction, decodedText = null) {
+        const card = document.createElement("div");
+        card.id = `msg-${env.idempotency_id}`;
+        card.className = `msg-card msg-${direction}`;
+
+        let content = decodedText;
+        if (!content) {
+            try {
+                const ciphertext = typeof env.payload === "string" ? env.payload : env.payload?.ciphertext;
+                content = decodeURIComponent(escape(atob(ciphertext || "")));
+            } catch {
+                content = "[Malformed payload / Ciphertext]";
+            }
+        }
+
+        card.innerHTML = `
+        <div>${escapeHtml(content)}</div>
+        <div class="msg-meta">
+          <span>Seq #${env.seq_id}</span>
+          <span class="ack-status">${direction === "outbound" ? "⏳ Sent..." : "Received"}</span>
+        </div>
+      `;
+        messagesList.appendChild(card);
+        messagesList.scrollTop = messagesList.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    connectBtn.addEventListener("click", connect);
+    disconnectBtn.addEventListener("click", () => {
+        explicitClose = true;
+        if (ws) ws.close(1000, "Client initiated teardown");
+    });
+    sendBtn.addEventListener("click", sendMessage);
+    msgTextInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendMessage();
+    });
+</script>
+</body>
+</html>

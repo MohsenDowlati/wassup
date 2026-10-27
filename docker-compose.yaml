@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  # ============================================================================
+  # Nginx Reverse Proxy / Load Balancer
+  # ============================================================================
+  loadbalancer:
+    image: nginx:1.25-alpine
+    container_name: wassup-lb
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deployments/nginx.local.conf:/etc/nginx/nginx.conf:ro
+      - ./web:/usr/share/nginx/html:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    networks:
+      - wassup-infra-net
+
+  # ============================================================================
+  # Redis 7.2 (PubSub, Session Registry, Sliding-Window Lua Rate Limiting)
+  # ============================================================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: wassup-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+    networks:
+      - wassup-infra-net
+
+  # ============================================================================
+  # MongoDB 7.0 (Ephemeral Storage with TTL)
+  # ============================================================================
+  mongo:
+    image: mongo:7.0
+    container_name: wassup-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - wassup-infra-net
+
+volumes:
+  mongo-data:
+
+networks:
+  wassup-infra-net:
+    driver: bridge
