@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -109,7 +110,10 @@ func (h *SecureUpgradeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	sessionID := GenerateSessionID()
 
 	client := NewClientSession(
-		r.Context(),
+		// The HTTP request context is canceled when ServeHTTP returns after the
+		// upgrade. The WebSocket session outlives that handler, so detach its
+		// lifetime from the request; gateway shutdown closes sessions via the hub.
+		context.WithoutCancel(r.Context()),
 		claims.UserID,
 		sessionID,
 		wsConn,

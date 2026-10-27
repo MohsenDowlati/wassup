@@ -336,16 +336,20 @@
     }
 
     function handleIncomingEnvelope(env) {
-        logAudit("RECV_ENVELOPE", { id: env.message_id, type: env.type, seq: env.sequence_num });
+        logAudit("RECV_ENVELOPE", { id: env.idempotency_id, type: env.type, seq: env.seq_id });
 
         // Handle delivery ACK from remote peer or server
-        if (env.type === "ack") {
-            if (pendingAcks.has(env.ack_for_id)) {
-                clearTimeout(pendingAcks.get(env.ack_for_id).timeout);
-                pendingAcks.delete(env.ack_for_id);
+        if (env.type === "CLIENT_ACK" || env.type === "SERVER_ACK") {
+            let ackForId = "";
+            try {
+                ackForId = decodeURIComponent(escape(atob(env.payload?.ciphertext || "")));
+            } catch {}
+            if (pendingAcks.has(ackForId)) {
+                clearTimeout(pendingAcks.get(ackForId).timeout);
+                pendingAcks.delete(ackForId);
                 pendingAcksCount.textContent = pendingAcks.size;
 
-                const msgEl = document.getElementById(`msg-${env.ack_for_id}`);
+                const msgEl = document.getElementById(`msg-${ackForId}`);
                 if (msgEl) {
                     const statusBadge = msgEl.querySelector(".ack-status");
                     if (statusBadge) statusBadge.textContent = "✓✓ Delivered (P99 ACK)";
@@ -358,20 +362,20 @@
         renderMessage(env, "inbound");
 
         // Auto-send delivery ACK back to original sender
-        sendAck(env.message_id, env.sender_id, env.conversation_id);
+        sendAck(env.idempotency_id, env.sender_id, env.conversation_id);
     }
 
     function sendAck(targetMessageId, recipientId, convId) {
         const ackEnv = {
-            message_id: generateUUID(),
+            idempotency_id: generateUUID(),
             conversation_id: convId,
             sender_id: document.getElementById("userIdInput").value.trim(),
             recipient_id: recipientId,
-            type: "ack",
-            ack_for_id: targetMessageId,
-            sequence_num: ++localSeq,
+            type: "CLIENT_ACK",
+            seq_id: ++localSeq,
             timestamp: Date.now(),
-            trace_context: generateTraceparent()
+            trace_id: generateTraceparent(),
+            payload: { ciphertext: btoa(targetMessageId) }
         };
         ws.send(JSON.stringify(ackEnv));
         seqCounter.textContent = localSeq;
@@ -394,15 +398,15 @@
         seqCounter.textContent = localSeq;
 
         const envelope = {
-            message_id: messageId,
+            idempotency_id: messageId,
             conversation_id: convId,
             sender_id: myId,
             recipient_id: recipientId,
-            type: "chat",
-            sequence_num: localSeq,
+            type: "MESSAGE",
+            seq_id: localSeq,
             timestamp: Date.now(),
-            payload: base64Payload,
-            trace_context: generateTraceparent()
+            payload: { ciphertext: base64Payload },
+            trace_id: generateTraceparent()
         };
 
         // Set timeout for Delivery ACK tracking (At-Least-Once Delivery SLA)
@@ -429,13 +433,14 @@
 
     function renderMessage(env, direction, decodedText = null) {
         const card = document.createElement("div");
-        card.id = `msg-${env.message_id}`;
+        card.id = `msg-${env.idempotency_id}`;
         card.className = `msg-card msg-${direction}`;
 
         let content = decodedText;
         if (!content) {
             try {
-                content = decodeURIComponent(escape(atob(env.payload)));
+                const ciphertext = typeof env.payload === "string" ? env.payload : env.payload?.ciphertext;
+                content = decodeURIComponent(escape(atob(ciphertext || "")));
             } catch {
                 content = "[Malformed payload / Ciphertext]";
             }
@@ -444,7 +449,7 @@
         card.innerHTML = `
         <div>${escapeHtml(content)}</div>
         <div class="msg-meta">
-          <span>Seq #${env.sequence_num}</span>
+          <span>Seq #${env.seq_id}</span>
           <span class="ack-status">${direction === "outbound" ? "⏳ Sent..." : "Received"}</span>
         </div>
       `;

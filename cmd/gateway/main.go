@@ -54,7 +54,6 @@ func main() {
 		_ = mongoClient.Disconnect(disconnectCtx)
 	}()
 
-	// Wires
 	sessionRegistry := redis.NewSessionRegistry(redisClient)
 	pubsubManager := redis.NewPubSubManager(redisClient, logger)
 	defer pubsubManager.Close()
@@ -84,7 +83,7 @@ func main() {
 		}
 	}()
 
-	pasetoVerifier, err := loadPasetoVerifierFromEnv()
+	pasetoVerifier, err := security.NewPasetoVerifierFromEnv()
 	if err != nil {
 		logger.Error("failed to initialize paseto verifier", slog.String("error", err.Error()))
 		os.Exit(1)
@@ -120,8 +119,11 @@ func main() {
 		_, _ = w.Write([]byte("READY"))
 	})
 
+	serverPort := getEnv("SERVER_PORT", "8080")
+	serverAddr := ":" + serverPort
+
 	server := &http.Server{
-		Addr:         ":8080",
+		Addr:         serverAddr,
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -152,4 +154,11 @@ func main() {
 	hub.BroadcastShutdown(shutdownCtx)
 
 	logger.Info("gateway graceful shutdown completed")
+}
+
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }
